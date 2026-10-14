@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  PROJECT_ID: 'section31-509508' # Replace with your actual Google Cloud Project ID
+  PROJECT_ID: 'section31-509508'
   REGION: 'us-central1'
   SERVICE_NAME: 'devops-web-service'
   REPOSITORY: 'devops-repo'
@@ -15,7 +15,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    # Add 'id-token' permission to enable OIDC token generation
     permissions:
       contents: read
       id-token: write
@@ -24,19 +23,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Exam Learning Point: Keyless Authentication using Workload Identity Federation
+      # Enhanced Auth step that automatically configures Docker and credentials
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
-
-      # Set up Docker client for Artifact Registry
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Authorize Docker to Artifact Registry
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+          create_credentials_file: true
+          configure_docker: true # <-- This automatically authorizes Docker for GAR securely!
 
       - name: Build and Push Container Image
         run: |
