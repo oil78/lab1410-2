@@ -8,7 +8,7 @@ app = Flask(__name__)
 def hello():
   env_name = os.environ.get("ENVIRONMENT", "Development")
   return (
-      f"Hello from Cloud Run Version 1! Running in {{env_name}} environment. Revision:"
+      f"Hello from Cloud Run Version 2! Running in {{env_name}} environment. Revision:"
       f" {{os.environ.get('K_REVISION', 'unknown')}}"
   )
 
