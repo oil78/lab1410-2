@@ -34,9 +34,15 @@ jobs:
 
       - name: Build and Push Container Image
         run: |
+          # 1. Explicitly generate an access token via gcloud and log Docker into Artifact Registry
+          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin ${{ env.REGION }}-docker.pkg.dev
+
+          # 2. Build and push your container
           IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
+          
+          # 3. Save image tag for the deploy step
           echo "IMAGE_URL=$IMAGE_TAG" >> $GITHUB_ENV
 
       - name: Deploy to Cloud Run
