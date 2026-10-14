@@ -23,22 +23,23 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Step 1: Authenticate to Google Cloud using WIF
+      # Authenticate via WIF and impersonate the Service Account
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: gh-actions-deployer@section31-509508.iam.gserviceaccount.com
           create_credentials_file: true
 
-      # Step 2: Set up Google Cloud SDK CLI tool
+      # Set up Cloud SDK CLI tool
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      # Step 3: Explicitly configure Docker to use the GCP credentials
+      # Authorize Docker to talk to Artifact Registry using the active session
       - name: Authorize Docker to Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
-      # Step 4: Build and Push Container Image
+      # Build and push container image
       - name: Build and Push Container Image
         run: |
           IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
@@ -46,7 +47,7 @@ jobs:
           docker push $IMAGE_TAG
           echo "IMAGE_URL=$IMAGE_TAG" >> $GITHUB_ENV
 
-      # Step 5: Deploy to Cloud Run
+      # Deploy securely to Cloud Run
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
