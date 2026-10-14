@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  PROJECT_ID: 'YOUR_PROJECT_ID' # Replace with your actual Google Cloud Project ID
+  PROJECT_ID: 'section31-509508' # Replace with your actual Google Cloud Project ID
   REGION: 'us-central1'
   SERVICE_NAME: 'devops-web-service'
   REPOSITORY: 'devops-repo'
