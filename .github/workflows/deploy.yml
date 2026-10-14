@@ -1,0 +1,54 @@
+name: Deploy to Cloud Run via WIF
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: 'YOUR_PROJECT_ID' # Replace with your actual Google Cloud Project ID
+  REGION: 'us-central1'
+  SERVICE_NAME: 'devops-web-service'
+  REPOSITORY: 'devops-repo'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    # Add 'id-token' permission to enable OIDC token generation
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Exam Learning Point: Keyless Authentication using Workload Identity Federation
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      # Set up Docker client for Artifact Registry
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Authorize Docker to Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+
+      - name: Build and Push Container Image
+        run: |
+          IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
+          docker build -t $IMAGE_TAG .
+          docker push $IMAGE_TAG
+          echo "IMAGE_URL=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          image: ${{ env.IMAGE_URL }}
+          region: ${{ env.REGION }}
+          flags: '--allow-unauthenticated'
