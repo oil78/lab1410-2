@@ -15,6 +15,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    # Required permissions for Workload Identity Federation OIDC token generation
     permissions:
       contents: read
       id-token: write
@@ -23,28 +24,32 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Enhanced Auth step that automatically configures Docker and credentials
+      # Step 1: Authenticate to Google Cloud using WIF (Outputs an access token)
       - name: Authenticate to Google Cloud
+        id: auth
         uses: google-github-actions/auth@v2
         with:
+          token_format: 'access_token'
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
-          create_credentials_file: true
-          configure_docker: true # <-- This automatically authorizes Docker for GAR securely!
 
+      # Step 2: Authenticate Docker to Google Cloud Artifact Registry using the token
+      - name: Authenticate Docker to Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGION }}-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      # Step 3: Build and Push Container Image to Artifact Registry
       - name: Build and Push Container Image
         run: |
-          # 1. Explicitly generate an access token via gcloud and log Docker into Artifact Registry
-          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin ${{ env.REGION }}-docker.pkg.dev
-
-          # 2. Build and push your container
           IMAGE_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}"
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
-          
-          # 3. Save image tag for the deploy step
           echo "IMAGE_URL=$IMAGE_TAG" >> $GITHUB_ENV
 
+      # Step 4: Deploy the built image securely to Cloud Run
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
